@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import json
 import os
+import threading
 
 from agent.llm_utils import choose_agent
 from agent.run import WebSocketManager
@@ -57,7 +58,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 await websocket.send_json({"type": "logs", "output": f"Initiated an Agent: {agent}"})
                 if task and report_type and agent:
-                    await manager.start_streaming(task, report_type, agent, agent_role_prompt, websocket)
+                    ws_tx_thread = threading.Thread(
+                        target=manager.start_streaming,
+                        args=(
+                            task,
+                            report_type,
+                            agent,
+                            websocket,
+                        ),
+                    )
+                    ws_tx_thread.start()
                 else:
                     print("Error: not enough parameters provided.")
 
